@@ -1,0 +1,13 @@
+{
+  "id": "scheduler",
+  "name": "AI Scheduler + Reminders",
+  "product": { "deck_name": "Agendamiento + Recordatorios", "setup_usd": 497, "monthly_usd": 297 },
+  "description": "Booking, rescheduling or cancelling appointments; checking availability; confirming reminders.",
+  "kind": "conversational",
+  "tier": "facil",
+  "tools": ["check_availability", "book_appointment", "reschedule_appointment", "save_lead", "handoff_to_human"],
+  "route": {
+    "keywords": ["\\bbook", "appointment", "schedul", "reschedul", "\\bcancel", "availab", "opening", "\\bslot", "\\btime\\b", "tomorrow", "next week", "\\bvisit", "cita", "agendar", "reservar", "turno", "disponib", "mañana", "cambiar la hora"],
+    "priority": 10
+  }
+}

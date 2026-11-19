@@ -1,0 +1,29 @@
+{
+  "name": "automathink-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Automathink Core — orquestador + agentes ejecutores (packs) desplegables por cliente",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env api/server.js",
+    "dev": "node --watch --env-file-if-exists=.env api/server.js",
+    "demo": "node --env-file-if-exists=.env scripts/demo.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "check": "node scripts/check.js",
+    "hash-password": "node scripts/hash-password.js",
+    "chat": "node --env-file-if-exists=.env scripts/chat-cli.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/formbody": "^8.0.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/static": "^10.1.5",
+    "better-sqlite3": "^13.0.3",
+    "fastify": "^5.12.5",
+    "yaml": "^2.8.1"
+  }
+}

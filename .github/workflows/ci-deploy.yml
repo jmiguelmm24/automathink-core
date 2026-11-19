@@ -1,0 +1,74 @@
+# Automathink Core — tests en cada push/PR y despliegue al VPS (todos los clientes) al hacer push a main.
+# Secrets del repo (Settings → Secrets and variables → Actions):
+#   VPS_HOST         IP o nombre del VPS (p. ej. srv123456.hstgr.cloud)
+#   VPS_USER         usuario SSH (root)
+#   VPS_SSH_KEY      clave privada de despliegue; en el VPS su pública está limitada con
+#                    command="/docker/automathink-core/deploy/update-all.sh" (ver deploy/VPS.md)
+#   VPS_KNOWN_HOSTS  salida de: ssh-keyscan -t ed25519 <VPS_HOST>
+# Sin estos secrets el despliegue se salta (los tests siguen corriendo).
+name: CI / Deploy
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# Mínimo privilegio: el GITHUB_TOKEN solo lee el repo (el despliegue usa SSH, no el token)
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: La imagen construye y arranca
+        run: |
+          docker build -t automathink-core:ci .
+          docker run -d --name core -e CLIENT_DIR=/app/clients/demo-dental -e SESSION_SECRET=ci-secreto-de-prueba-de-al-menos-32-caracteres automathink-core:ci
+          for i in $(seq 1 30); do
+            if docker exec core node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then echo "health OK"; exit 0; fi
+            sleep 2
+          done
+          docker logs core; exit 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    env:
+      HAS_SECRETS: ${{ secrets.VPS_HOST != '' && secrets.VPS_SSH_KEY != '' }}
+    steps:
+      - name: Sin secrets del VPS todavía
+        if: env.HAS_SECRETS != 'true'
+        run: echo "::notice::Despliegue omitido — configura VPS_HOST, VPS_USER, VPS_SSH_KEY y VPS_KNOWN_HOSTS (ver deploy/VPS.md)"
+      - name: Desplegar en el VPS
+        if: env.HAS_SECRETS == 'true'
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/deploy_key" && chmod 600 "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          # El VPS fuerza deploy/update-all.sh para esta clave: el comando enviado se ignora
+          ssh -i "$HOME/.ssh/deploy_key" "$TARGET" deploy

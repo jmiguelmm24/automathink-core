@@ -1,0 +1,10 @@
+node_modules/
+data/
+backups/
+.env
+.env.*
+!.env.example
+# Los clientes reales viven en el VPS (/docker/clients/<cliente>), no en el repo
+clients/*
+!clients/_template/
+!clients/demo-dental/

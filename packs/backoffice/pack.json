@@ -1,0 +1,10 @@
+{
+  "id": "backoffice",
+  "name": "AI Back-office (lead intake & triage)",
+  "product": { "deck_name": "Automatizaciones / Back-office", "setup_usd": 597, "monthly_usd": 347 },
+  "description": "Classifies and scores leads arriving from web forms, CRMs or Make/Zapier webhooks (POST /api/intake).",
+  "kind": "intake",
+  "tier": "facil",
+  "tools": ["save_lead"],
+  "route": { "keywords": [] }
+}

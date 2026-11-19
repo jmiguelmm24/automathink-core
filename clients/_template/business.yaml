@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PERFIL DEL NEGOCIO — lo único que cambia entre clientes (junto con su .env)
+# Copia esta carpeta: clients/<slug-del-cliente>/  y rellena. Lo que no pongas usa valores por defecto.
+# El agente SOLO sabe lo que hay aquí: si un precio o una política no está, dirá que el equipo lo confirma.
+# ─────────────────────────────────────────────────────────────────────────────
+
+business:
+  name: "Business Name"
+  industry: "dental clinic"            # una frase: ayuda al agente a entender el contexto
+  timezone: "America/New_York"         # America/Chicago, America/Denver, America/Los_Angeles, Europe/Madrid…
+  languages: [en, es]                  # responde en el idioma del cliente
+  address: ""
+  phone: ""
+  website: ""
+  about: ""                            # 1-2 frases: qué os hace distintos
+
+assistant:
+  name: "Ava"
+  tone: "warm, brief and professional. Short SMS-style messages."
+  # Aviso de IA que va al inicio de la PRIMERA respuesta de cada conversación (obligatorio en la UE, recomendado en EE. UU.)
+  disclosure: "Hi! I'm Ava, the virtual assistant (AI) of Business Name."
+  welcome: "Hi! I'm Ava, Business Name's virtual assistant. How can I help?"
+
+# Packs vendidos a este cliente (los agentes que se activan):
+#   reception · scheduler · followup · onboarding · backoffice · reports
+packs: [reception, scheduler, reports]
+
+# Horario en hora local. Días: mon tue wed thu fri sat sun. Varios tramos: ["09:00-13:00", "14:00-18:00"]
+hours:
+  mon: ["09:00-17:00"]
+  tue: ["09:00-17:00"]
+  wed: ["09:00-17:00"]
+  thu: ["09:00-17:00"]
+  fri: ["09:00-15:00"]
+
+services:
+  - name: "Consultation"
+    duration_min: 30
+    price: "Free"
+    description: ""
+
+faqs:
+  - q: "Do you take insurance?"
+    a: ""
+
+policies:
+  - "24-hour cancellation policy."
+
+qualification:
+  questions:
+    - "What do you need help with?"
+    - "How soon are you looking to get started?"
+
+booking:
+  slot_step_min: 30
+  horizon_days: 14
+  min_notice_hours: 2
+  reminder_hours_before: 24
+  # reminder_template: "Hi! Reminder from {business}: your {service} is on {when}. Reply YES to confirm."
+
+followup:
+  touches_days: [0, 1, 3, 7]           # día 0 = minutos después de entrar el lead (speed to lead)
+
+onboarding:
+  steps: []
+  #  - name: "Intake form"
+  #    how: "Fill the form at https://…"
+
+handoff:
+  keywords: [emergency, lawyer, attorney, complaint, refund, urgencia, abogado, queja]
+  message: "Thanks for reaching out. A member of our team will contact you shortly."
+
+# Supuestos del informe de horas ahorradas (se enseñan al cliente como estimación)
+kpis:
+  minutes_saved_per_conversation: 6
+  minutes_saved_per_booking: 8
+  hourly_cost_usd: 18

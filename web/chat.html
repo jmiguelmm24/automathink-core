@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat</title>
+  <link rel="stylesheet" href="/brand.css">
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; background: var(--paper); }
+    .phone { width: min(400px, 100vw); height: min(720px, 100vh); background: #fff; border: 1px solid var(--line); border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 40px rgba(31,36,33,.12); }
+    .top { background: var(--ink); color: var(--pearl); padding: 16px 18px; display: flex; gap: 12px; align-items: center; }
+    .av { width: 38px; height: 38px; border-radius: 50%; background: var(--sage); color: var(--ink); display: grid; place-items: center; font-weight: 800; }
+    .top small { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--sage); text-transform: uppercase; }
+    .msgs { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; background: var(--paper); }
+    .m { max-width: 82%; padding: 9px 12px; border-radius: 16px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; }
+    .bot { background: #fff; border: 1px solid var(--line); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .me { background: var(--ink); color: var(--pearl); align-self: flex-end; border-bottom-right-radius: 4px; }
+    .typing { color: var(--muted); font-size: 13px; padding: 0 4px; }
+    form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--pearl); }
+    form input { border-radius: 999px; }
+    .foot { text-align: center; font-size: 11px; color: var(--muted); padding: 0 0 10px; }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="top"><div class="av" id="av">A</div><div><b id="name">…</b><small>AI assistant · online 24/7</small></div></div>
+    <div class="msgs" id="msgs"></div>
+    <form id="f"><input id="t" placeholder="Type a message… / Escribe un mensaje…" autocomplete="off" maxlength="1000"><button class="primary">Send</button></form>
+    <div class="foot">Powered by Automathink · You're chatting with an AI assistant</div>
+  </div>
+  <script src="/chat.js"></script>
+</body>
+</html>

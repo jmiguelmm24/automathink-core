@@ -1,0 +1,10 @@
+{
+  "id": "followup",
+  "name": "AI Lead Follow-up",
+  "product": { "deck_name": "Seguimiento de Leads (CRM)", "setup_usd": 697, "monthly_usd": 397 },
+  "description": "Replies from leads that were contacted by a follow-up message; re-engages them and moves them to book.",
+  "kind": "conversational",
+  "tier": "facil",
+  "tools": ["save_lead", "check_availability", "book_appointment", "handoff_to_human"],
+  "route": { "keywords": ["interested", "more info", "price", "quote", "estimate", "cotiza", "precio", "información", "informacion"], "priority": 5 }
+}

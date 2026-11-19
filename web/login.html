@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Automathink</title>
+  <link rel="stylesheet" href="/brand.css">
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; background: var(--ink); }
+    .card { width: min(380px, 92vw); background: var(--ink-2); border-radius: 16px; padding: 28px; color: var(--pearl); }
+    .logo { color: var(--pearl); margin-bottom: 22px; }
+    label { display: block; font-size: 13px; margin: 14px 0 6px; color: var(--pearl); }
+    button { width: 100%; margin-top: 20px; background: var(--sage); color: var(--ink); border: 0; font-weight: 700; }
+    #err { color: #F2A99F; font-size: 13px; min-height: 18px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <form class="card" id="f">
+    <div class="logo"><span class="mark">A</span><span>Auto<b>Mathink</b></span></div>
+    <div class="eyebrow" style="color:var(--sage)">Client dashboard</div>
+    <label for="u">User</label><input id="u" autocomplete="username" required>
+    <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
+    <button type="submit">Sign in</button>
+    <div id="err" role="alert"></div>
+  </form>
+  <script src="/login.js"></script>
+</body>
+</html>

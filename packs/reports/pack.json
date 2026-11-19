@@ -1,0 +1,9 @@
+{
+  "id": "reports",
+  "name": "Weekly Impact Report",
+  "product": { "deck_name": "Reportes Automáticos", "setup_usd": 597, "monthly_usd": 347 },
+  "description": "Every Monday 8am: conversations, bookings, leads, after-hours messages and estimated hours saved, sent to the owner.",
+  "kind": "scheduled",
+  "tier": "facil",
+  "tools": []
+}

@@ -1,0 +1,15 @@
+node_modules
+data
+backups
+.git
+.github
+.env
+.env.*
+test
+.claude
+README.md
+CLAUDE.md
+# Los clientes reales NO van en la imagen: se montan como volumen (deploy/new-client.sh)
+clients/*
+!clients/_template
+!clients/demo-dental

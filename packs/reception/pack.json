@@ -1,0 +1,10 @@
+{
+  "id": "reception",
+  "name": "AI Receptionist (Chatbot)",
+  "product": { "deck_name": "Chatbot IA Multicanal", "setup_usd": 997, "monthly_usd": 497 },
+  "description": "General questions about the business, services, prices, hours, location; qualifies new prospects.",
+  "kind": "conversational",
+  "tier": "facil",
+  "tools": ["save_lead", "handoff_to_human"],
+  "route": { "keywords": [], "priority": 0 }
+}

@@ -1,0 +1,94 @@
+# Cliente de DEMO (ficticio) — lo que enseñamos en las llamadas. Datos inventados.
+business:
+  name: "Sonrisa Dental Miami"
+  industry: "family & cosmetic dental clinic (bilingual English/Spanish)"
+  timezone: "America/New_York"
+  languages: [en, es]
+  address: "1200 SW 8th St, Miami, FL 33135"
+  phone: "(305) 555-0142"
+  website: "sonrisadental.example"
+  about: "Bilingual family dentist in Little Havana. Same-week appointments, evening hours on Thursdays."
+
+assistant:
+  name: "Ava"
+  tone: "warm, upbeat and brief. Short SMS-style messages. Mirror the customer's language (English or Spanish)."
+  disclosure: "Hi! I'm Ava, Sonrisa Dental's virtual assistant (AI) 🦷"
+  welcome: "Hi! I'm Ava, Sonrisa Dental's virtual assistant. I can answer questions or book your visit, in English or Spanish."
+
+packs: [reception, scheduler, followup, onboarding, backoffice, reports]
+
+hours:
+  mon: ["09:00-13:00", "14:00-18:00"]
+  tue: ["09:00-13:00", "14:00-18:00"]
+  wed: ["09:00-13:00", "14:00-18:00"]
+  thu: ["09:00-13:00", "14:00-20:00"]
+  fri: ["09:00-14:00"]
+  sat: ["09:00-12:00"]
+
+services:
+  - name: "New patient exam & cleaning"
+    duration_min: 60
+    price: "$99 without insurance (includes X-rays)"
+    description: "First visit: exam, X-rays and cleaning."
+  - name: "Cleaning"
+    duration_min: 45
+    price: "$85 without insurance"
+  - name: "Teeth whitening"
+    duration_min: 60
+    price: "$299"
+    description: "In-office whitening, one session."
+  - name: "Emergency visit"
+    duration_min: 30
+    price: "$75 exam"
+    description: "Tooth pain, broken tooth. Same-day when possible."
+  - name: "Invisalign consultation"
+    duration_min: 30
+    price: "Free"
+
+faqs:
+  - q: "Do you take insurance?"
+    a: "Yes, most PPO plans (Delta Dental, Cigna, Aetna, MetLife, Guardian). We don't take HMO/Medicaid. Bring your card to the first visit."
+  - q: "Do you have payment plans?"
+    a: "Yes, through CareCredit and Cherry, 0% for 6-12 months on approved credit."
+  - q: "Where do I park?"
+    a: "Free parking behind the building, entrance on SW 12th Ave."
+  - q: "Do you see kids?"
+    a: "Yes, from age 3."
+
+policies:
+  - "Please arrive 10 minutes early to your first visit."
+  - "24-hour cancellation policy; late cancellations may have a $25 fee."
+  - "We don't give diagnoses or prescriptions by message."
+
+qualification:
+  questions:
+    - "Is this for you or a family member?"
+    - "Do you have dental insurance? Which one?"
+    - "Any pain right now, or is it a routine visit?"
+
+booking:
+  slot_step_min: 30
+  horizon_days: 14
+  min_notice_hours: 2
+  reminder_hours_before: 24
+
+followup:
+  touches_days: [0, 1, 3, 7]
+
+onboarding:
+  steps:
+    - name: "Patient intake form"
+      how: "Fill it online at sonrisadental.example/intake (secure link)."
+    - name: "Insurance card"
+      how: "Front and back photo uploaded through the secure portal link, never by SMS."
+    - name: "Medical history"
+      how: "Part of the intake form."
+
+handoff:
+  keywords: [emergency, bleeding, swelling, lawyer, attorney, complaint, refund, urgencia, sangrado, hinchazón, abogado, queja]
+  message: "Thanks for reaching out. A member of the Sonrisa Dental team will call you shortly. If this is a medical emergency, call 911."
+
+kpis:
+  minutes_saved_per_conversation: 6
+  minutes_saved_per_booking: 8
+  hourly_cost_usd: 18

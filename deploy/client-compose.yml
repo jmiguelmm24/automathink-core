@@ -1,0 +1,34 @@
+# Automathink Core — instancia de UN cliente en el VPS de Hostinger. Lo copia deploy/new-client.sh a
+# /docker/clients/__SLUG__/docker-compose.yml. Mismo patrón que BEXP OPS: Traefik del VPS (80/443, Let's Encrypt)
+# enruta por etiquetas; la app no publica puertos.
+services:
+  app:
+    image: automathink-core:latest      # se construye una vez para todos: deploy/update-all.sh
+    container_name: am-__SLUG__
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"
+    # Endurecimiento (igual que BEXP OPS): raíz de solo lectura, sin capacidades, sin escalar privilegios
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 256m                     # cada cliente tiene su techo: uno no puede tumbar a los demás
+    volumes:
+      - ./client:/app/client:ro         # business.yaml del cliente (lo editas en el VPS)
+      - data:/app/data                  # SQLite + master.key
+    expose: ["3000"]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.am-__SLUG__.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.am-__SLUG__.entrypoints=websecure
+      - traefik.http.routers.am-__SLUG__.tls.certresolver=letsencrypt
+      - traefik.http.services.am-__SLUG__.loadbalancer.server.port=3000
+
+volumes:
+  data:

@@ -1,0 +1,10 @@
+{
+  "id": "onboarding",
+  "name": "AI Onboarding",
+  "product": { "deck_name": "Onboarding Automático", "setup_usd": 797, "monthly_usd": 447 },
+  "description": "New customers completing their onboarding: documents, forms, first-visit preparation, account setup.",
+  "kind": "conversational",
+  "tier": "facil",
+  "tools": ["update_onboarding", "handoff_to_human"],
+  "route": { "keywords": ["onboard", "document", "paperwork", "\\bform\\b", "new patient", "new client", "insurance card", "intake form", "documentos", "formulario", "papeles", "nuevo cliente", "nuevo paciente"], "priority": 8 }
+}
