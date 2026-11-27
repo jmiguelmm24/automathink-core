@@ -111,6 +111,9 @@ test('programador: recordatorio 24 h antes y seguimiento tras un formulario (spe
   assert.equal(res.json().first_touch, true);
   assert.equal(app.db.prepare('SELECT score FROM leads').get().score, 8);
   assert.equal(app.db.prepare(`SELECT COUNT(*) n FROM notifications WHERE kind = 'hot_lead'`).get().n, 1);
+  // /api/intake marca el primer toque con la hora real: se lleva a NOW para que el test no dependa del día en que corre
+  assert.ok(app.db.prepare('SELECT next_touch_at FROM leads').get().next_touch_at, 'el formulario programa el primer toque');
+  app.db.prepare('UPDATE leads SET next_touch_at = ?').run(NOW.toISOString());
   // Cita mañana a las 09:00 → recordatorio
   const c = app.db.prepare('SELECT id FROM contacts').get();
   app.db.prepare(`INSERT INTO bookings (contact_id, service, starts_at, ends_at, created_at) VALUES (?, 'Cleaning', '2026-11-25T14:00:00.000Z', '2026-11-25T14:45:00.000Z', ?)`).run(c.id, NOW.toISOString());
@@ -132,6 +135,8 @@ test('programador: recordatorio 24 h antes y seguimiento tras un formulario (spe
 test('informe: horas ahorradas y fuera de horario', async () => {
   const app = await makeApp({ llm: scriptedLlm([text('a'), text('b')]) });
   await handleInbound(app, { channel: 'web', address: 'sess_report01', text: 'hours?', now: NOW });
+  // Los mensajes se guardan con la hora real: se fijan a NOW (martes 10:00 en Miami, en horario) para que el test sea estable
+  app.db.prepare('UPDATE messages SET created_at = ?').run(NOW.toISOString());
   const night = new Date('2026-11-25T03:00:00Z'); // 22:00 en Miami
   app.db.prepare(`INSERT INTO messages (conversation_id, role, body, created_at) VALUES (1, 'user', 'late', ?)`).run(night.toISOString());
   const r = computeReport(app.db, app.business, { days: 7, now: new Date('2026-11-26T00:00:00Z') });
