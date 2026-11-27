@@ -65,6 +65,14 @@ onboarding:
   steps: []
   #  - name: "Intake form"
   #    how: "Fill the form at https://…"
+  # welcome_template: "Welcome to {business}! Before your {service} on {when}, please: {steps}"   # cadena cita → onboarding
+
+# Cadenas entre agentes (docs/superpowers/specs/2026-11-27-cadenas-entre-agentes-design.md).
+# Cada una se activa sola si el cliente tiene los dos packs; aquí solo se apaga o se ajusta.
+# chains:
+#   booking_to_onboarding: { enabled: true, only_new_customers: true }        # scheduler → onboarding
+#   cancel_to_followup:    { enabled: true, after_hours: 24 }                  # scheduler → followup
+#   hot_lead:              { enabled: true, min_score: 8, low_score_delay_hours: 24 }   # backoffice → followup
 
 handoff:
   keywords: [emergency, lawyer, attorney, complaint, refund, urgencia, abogado, queja]

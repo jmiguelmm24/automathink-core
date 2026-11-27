@@ -46,6 +46,7 @@ npm run demo          # Sonrisa Dental Miami (cliente ficticio de demo)
 2. Si necesita una herramienta nueva: añadirla en `api/tools/index.js` y listarla en el `pack.json`.
 3. Test en `test/` → `npm run check && npm test`.
 4. Activarlo en el `business.yaml` del cliente (`packs: [...]`) y `docker compose restart`.
+5. Si debe reaccionar a lo que hacen otros packs (cita creada, cancelada, lead puntuado…): `reacts_to` en su `pack.json` + `packs/<id>/reactions.js`. Ver [cadenas entre agentes](docs/superpowers/specs/2026-11-27-cadenas-entre-agentes-design.md).
 
 ## Alta de un cliente (VPS)
 
