@@ -12,6 +12,12 @@ import { notify } from './notify.js';
 import { humanTime } from './time.js';
 
 const MAX_TURNS = 6;
+// Haiku/Sonnet 5.5 piensan por defecto (thinking adaptativo) y esos tokens cuentan contra max_tokens:
+// con 600 la respuesta se cortaba o llegaba sin texto. Dejamos margen; el prompt ya pide respuestas cortas de SMS.
+export const MAX_OUTPUT_TOKENS = 4096;
+// Effort bajo: recomendado para respuestas cortas de chat/SMS (menos thinking, menos latencia y coste).
+// No se envía `thinking`: en Sonnet 5.5 `{type:'disabled'}` devuelve 400.
+export const AGENT_EFFORT = 'low';
 
 // ---------------------------------------------------------------- prompt de sistema
 // Bloque 1 (fijo por cliente, se cachea): reglas + perfil del negocio. Bloque 2: el agente concreto + fecha.
@@ -60,17 +66,25 @@ export async function runAgent(app, { pack, model, tier, conversation, contact, 
   // La API exige empezar por el usuario
   while (msgs.length && msgs[0].role !== 'user') msgs.shift();
   const tools = toolDefs(pack.tools || []);
-  let inTok = 0, outTok = 0, calls = 0, reply = '';
+  let inTok = 0, outTok = 0, calls = 0, reply = '', reason = null;
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const res = await app.llm.messages.create({
-        model, max_tokens: 600, system: systemPrompt(app, pack, now), messages: msgs,
+        model, max_tokens: MAX_OUTPUT_TOKENS, output_config: { effort: AGENT_EFFORT },
+        system: systemPrompt(app, pack, now), messages: msgs,
         ...(tools.length ? { tools } : {}),
       });
       inTok += (res.usage?.input_tokens || 0) + (res.usage?.cache_read_input_tokens || 0) + (res.usage?.cache_creation_input_tokens || 0);
       outTok += res.usage?.output_tokens || 0;
       const uses = res.content.filter(c => c.type === 'tool_use');
       reply = res.content.filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
+      if (res.stop_reason === 'max_tokens') {
+        // Se agotó el límite (p. ej. por thinking): si hay texto se usa tal cual; si no, se registra y
+        // handleInbound aplica la respuesta de reserva en vez de devolver una cadena vacía sin aviso.
+        reason = reply ? 'max_tokens: reply truncated' : 'max_tokens: no text in reply';
+        if (!reply) app.log?.warn({ model, pack: pack.id, turn }, 'respuesta cortada por max_tokens sin texto');
+        break;
+      }
       if (res.stop_reason !== 'tool_use' || !uses.length) break;
       msgs.push({ role: 'assistant', content: res.content });
       const results = [];
@@ -87,7 +101,7 @@ export async function runAgent(app, { pack, model, tier, conversation, contact, 
       }
       msgs.push({ role: 'user', content: results });
     }
-    record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'done' });
+    record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'done', reason });
     return reply;
   } catch (e) {
     record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'error', reason: String(e.message || e).slice(0, 300) });
