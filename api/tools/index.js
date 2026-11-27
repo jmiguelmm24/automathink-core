@@ -5,7 +5,7 @@ import { now as nowIso, logActivity, setMeta, getMeta } from '../db.js';
 import { availableSlots, checkSlot } from './calendar.js';
 import { parseLocal, humanTime, toLocalIso } from '../time.js';
 import { notify } from '../notify.js';
-import { emit } from '../events.js';
+import { emit, chainConfig } from '../events.js';
 
 const str = (d) => ({ type: 'string', description: d });
 
@@ -119,7 +119,9 @@ export const TOOLS = {
         if (input.name || input.email) db.prepare('UPDATE contacts SET name = COALESCE(?, name), email = COALESCE(?, email) WHERE id = ?').run(input.name || null, input.email || null, contact.id);
         return upsertLead(db, contact.id, { status: 'qualified', interest: input.interest, notes: input.notes, score: input.score });
       })();
-      if ((input.score || 0) >= 8) await notify(app, { kind: 'hot_lead', title: `Hot lead (${input.score}/10): ${input.interest}`, body: `${input.name || contact.address} — ${input.notes || ''}` });
+      // Aviso de la cadena "lead caliente": umbral configurable por cliente (business.yaml → chains.hot_lead.min_score)
+      const minScore = app.packs.followup ? chainConfig(app, 'hot_lead', { min_score: 8 }).min_score : 8;
+      if ((input.score || 0) >= minScore) await notify(app, { kind: 'hot_lead', title: `Hot lead (${input.score}/10): ${input.interest}`, body: `${input.name || contact.address} — ${input.notes || ''}` });
       return { ok: true, lead_id: lead.id, status: lead.status };
     },
   },

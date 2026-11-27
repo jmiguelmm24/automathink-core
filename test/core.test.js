@@ -111,13 +111,13 @@ test('programador: recordatorio 24 h antes y seguimiento tras un formulario (spe
   assert.equal(res.json().first_touch, true);
   assert.equal(app.db.prepare('SELECT score FROM leads').get().score, 8);
   assert.equal(app.db.prepare(`SELECT COUNT(*) n FROM notifications WHERE kind = 'hot_lead'`).get().n, 1);
-  // /api/intake marca el primer toque con la hora real: se lleva a NOW para que el test no dependa del día en que corre
-  assert.ok(app.db.prepare('SELECT next_touch_at FROM leads').get().next_touch_at, 'el formulario programa el primer toque');
-  app.db.prepare('UPDATE leads SET next_touch_at = ?').run(NOW.toISOString());
+  // Con la cadena "lead caliente" el primer toque lo programa su reacción durante tick(app, NOW), no el formulario
+  assert.equal(app.db.prepare('SELECT next_touch_at FROM leads').get().next_touch_at, null);
   // Cita mañana a las 09:00 → recordatorio
   const c = app.db.prepare('SELECT id FROM contacts').get();
   app.db.prepare(`INSERT INTO bookings (contact_id, service, starts_at, ends_at, created_at) VALUES (?, 'Cleaning', '2026-11-25T14:00:00.000Z', '2026-11-25T14:45:00.000Z', ?)`).run(c.id, NOW.toISOString());
   const t = await tick(app, NOW);
+  assert.equal(t.events, 1, 'lead.scored → toque inmediato (score 8)');
   assert.equal(t.reminders, 1);
   assert.equal(t.touches, 1);
   assert.equal(t.sent, 2);
