@@ -125,7 +125,7 @@ test('programador: recordatorio 24 h antes y seguimiento tras un formulario (spe
   const lead = app.db.prepare('SELECT touches, next_touch_at FROM leads').get();
   assert.equal(lead.touches, 1);
   assert.ok(lead.next_touch_at > NOW.toISOString());
-  assert.deepEqual(await tick(app, NOW), { reminders: 0, touches: 0, sent: 0, report: false }, 'no repite');
+  assert.deepEqual(await tick(app, NOW), { events: 0, reminders: 0, touches: 0, sent: 0, report: false }, 'no repite');
   // Sin consentimiento SMS no hay toque
   const r2 = await app.inject({ method: 'POST', url: '/api/intake', headers: { 'x-intake-token': 'tok-test' }, payload: { phone: '+13055550401', message: 'hi' } });
   assert.equal(r2.json().first_touch, false);

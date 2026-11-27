@@ -6,11 +6,16 @@ import { sendSms } from './channels/sms.js';
 import { TIER_MODELS } from './orquestador.js';
 import { computeReport, reportText } from './reports.js';
 import { notify } from './notify.js';
+import { dispatchEvents } from './events.js';
 
 const enabled = (app, id) => Boolean(app.packs[id]);
+// Pack con el que se guarda en la conversación cada tipo de mensaje de la bandeja de salida
+const OUTBOX_PACK = { reminder: 'scheduler', onboarding: 'onboarding', followup: 'followup' };
 
 export async function tick(app, now = new Date()) {
-  const out = { reminders: 0, touches: 0, sent: 0, report: false };
+  const out = { events: 0, reminders: 0, touches: 0, sent: 0, report: false };
+  // Primero las cadenas entre agentes: si una reacción programa un toque o un mensaje, sale en esta misma vuelta
+  out.events = await dispatchEvents(app, now);
   if (enabled(app, 'scheduler')) out.reminders = queueReminders(app, now);
   if (enabled(app, 'followup')) out.touches = await queueFollowups(app, now);
   out.sent = await flushOutbox(app, now);
@@ -100,7 +105,7 @@ async function flushOutbox(app, now) {
       db.transaction(() => {
         db.prepare(`UPDATE outbox SET status = ?, sent_at = ? WHERE id = ?`).run(r.simulated && m.channel === 'sms' ? 'simulated' : 'sent', nowIso(), m.id);
         const { conversation } = upsertContactConversation(db, { channel: m.channel, address: m.address });
-        addMessage(db, { conversation_id: conversation.id, role: 'assistant', body: m.body, pack: m.kind === 'reminder' ? 'scheduler' : 'followup' });
+        addMessage(db, { conversation_id: conversation.id, role: 'assistant', body: m.body, pack: OUTBOX_PACK[m.kind] || 'followup' });
       })();
       sent++;
     } catch (e) {

@@ -5,6 +5,7 @@ import { now as nowIso, logActivity, setMeta, getMeta } from '../db.js';
 import { availableSlots, checkSlot } from './calendar.js';
 import { parseLocal, humanTime, toLocalIso } from '../time.js';
 import { notify } from '../notify.js';
+import { emit } from '../events.js';
 
 const str = (d) => ({ type: 'string', description: d });
 
@@ -60,10 +61,13 @@ export const TOOLS = {
       if (!chk.ok) return { ok: false, error: chk.error };
       const id = db.transaction(() => {
         db.prepare('UPDATE contacts SET name = ?, email = COALESCE(?, email) WHERE id = ?').run(input.customer_name, input.email || null, contact.id);
+        const firstBooking = !db.prepare('SELECT 1 FROM bookings WHERE contact_id = ? LIMIT 1').get(contact.id);
         const { lastInsertRowid } = db.prepare('INSERT INTO bookings (contact_id, service, starts_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?)')
           .run(contact.id, chk.service.name, chk.start.toISOString(), chk.end.toISOString(), nowIso());
         logActivity(db, { entity_type: 'booking', entity_id: Number(lastInsertRowid), action: 'create', after: { service: chk.service.name, starts_at: chk.start.toISOString() } });
         upsertLead(db, contact.id, { status: 'booked', interest: chk.service.name, notes: input.notes });
+        emit(db, 'booking.created', { contact_id: contact.id, payload: {
+          booking_id: Number(lastInsertRowid), service: chk.service.name, starts_at: chk.start.toISOString(), first_booking: firstBooking } });
         return Number(lastInsertRowid);
       })();
       const when = humanTime(chk.start, tz);
@@ -86,6 +90,7 @@ export const TOOLS = {
         db.transaction(() => {
           db.prepare(`UPDATE bookings SET status = 'cancelled' WHERE id = ?`).run(b.id);
           logActivity(db, { entity_type: 'booking', entity_id: b.id, action: 'cancel' });
+          emit(db, 'booking.cancelled', { contact_id: contact.id, payload: { booking_id: b.id, service: b.service, starts_at: b.starts_at } });
         })();
         await notify(app, { kind: 'booking', title: `Cancelled: ${b.service} · ${humanTime(new Date(b.starts_at), tz)}`, body: contact.address });
         return { ok: true, cancelled: true };

@@ -46,6 +46,7 @@ const DEFAULTS = {
   onboarding: { steps: [] },
   packs: ['reception', 'scheduler'],
   kpis: { minutes_saved_per_conversation: 6, minutes_saved_per_booking: 8, hourly_cost_usd: 18 },
+  chains: {},   // ajustes de las cadenas entre agentes (api/events.js); vacío = valores por defecto de cada pack
 };
 
 export function loadBusiness(clientDir) {

@@ -17,6 +17,7 @@ import { sendSms, validTwilioSignature } from './channels/sms.js';
 import { computeReport } from './reports.js';
 import { upsertLead } from './tools/index.js';
 import { TIER_MODELS } from './orquestador.js';
+import { emit } from './events.js';
 
 const WEB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
@@ -27,6 +28,7 @@ export async function buildApp({ config, db = null, business = null, llm = null,
   app.decorate('db', db || openDb(config.dbPath));
   app.decorate('business', business || loadBusiness(config.clientDir));
   app.decorate('packs', loadPacks(app.business.packs));
+  app.decorate('reactions', null);   // reactions.js de los packs: se cargan al repartir el primer evento (api/events.js)
   app.decorate('llm', llm || (config.llmProvider === 'anthropic' ? new Anthropic({ apiKey: config.anthropicKey }) : mockLlm()));
 
   await app.register(cookie, { secret: config.sessionSecret || 'dev-secret-solo-para-local-no-usar-en-produccion' });
@@ -95,6 +97,8 @@ export async function buildApp({ config, db = null, business = null, llm = null,
     const lead = app.db.transaction(() => {
       const l = upsertLead(app.db, contact.id, { status: 'new', interest: message.slice(0, 120) || null });
       if (app.packs.followup && phoneOk && consent_sms) app.db.prepare('UPDATE leads SET next_touch_at = ? WHERE id = ?').run(nowIso(), l.id);
+      // Cadena "lead caliente": el pack de seguimiento decide cuándo tocar según la puntuación (api/events.js)
+      emit(app.db, 'lead.scored', { contact_id: contact.id, payload: { lead_id: l.id, score: l.score ?? null, source: 'intake', consent_sms: Boolean(consent_sms), phone_ok: phoneOk } });
       return app.db.prepare('SELECT * FROM leads WHERE id = ?').get(l.id);
     })();
     return { ok: true, lead_id: lead.id, status: lead.status, score: lead.score, first_touch: Boolean(lead.next_touch_at) };
