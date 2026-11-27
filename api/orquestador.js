@@ -60,15 +60,38 @@ export function chooseModel(app, { pack, text }) {
   return { tier, model: TIER_MODELS[tier], reason };
 }
 
-// Clasificador barato con Haiku: devuelve el id del pack o null
+// Clasificador barato con Haiku: devuelve el id del pack o null.
+// En Haiku 5.5 el thinking adaptativo viene activado y sus tokens cuentan en max_tokens: con un tope bajo la
+// respuesta podía quedarse sin bloque de texto. Por eso se desactiva el thinking y se pide esfuerzo bajo.
+// (budget_tokens, temperature/top_p/top_k no por defecto y el prefill del asistente devuelven 400 en Haiku 5.5.)
+export const CLASSIFIER_MAX_TOKENS = 64;
+
+// Normaliza la respuesta: minúsculas y sin puntuación ni comillas (se conservan letras, dígitos, '_' y '-').
+const normalizeId = s => String(s).toLowerCase().replace(/[^\p{L}\p{N}_-]+/gu, ' ').trim();
+
+// Devuelve el id de pack que coincide exactamente con la respuesta (o con una única palabra de ella), si no null
+export function parseClassifierReply(reply, packs) {
+  const ids = new Map(packs.map(p => [normalizeId(p.id), p.id]));
+  const clean = normalizeId(reply);
+  if (!clean) return null;
+  if (ids.has(clean)) return ids.get(clean);
+  const found = [...new Set(clean.split(/\s+/).filter(w => ids.has(w)))];
+  return found.length === 1 ? ids.get(found[0]) : null;
+}
+
 export function haikuClassifier(client) {
   return async (text, packs) => {
     const msg = await client.messages.create({
-      model: TIER_MODELS.facil, max_tokens: 20,
-      system: `Route a customer message to one agent. Reply with ONLY the id. Agents:\n${packs.map(p => `- ${p.id}: ${p.description}`).join('\n')}`,
+      model: TIER_MODELS.facil,
+      max_tokens: CLASSIFIER_MAX_TOKENS,
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'low' },
+      system: `Route a customer message to one agent. Reply with ONLY the agent id, nothing else. Agents:\n${packs.map(p => `- ${p.id}: ${p.description}`).join('\n')}`,
       messages: [{ role: 'user', content: String(text).slice(0, 800) }],
     });
-    return msg.content.filter(b => b.type === 'text').map(b => b.text).join('').trim().split(/\s/)[0];
+    if (!msg || msg.stop_reason === 'refusal' || !Array.isArray(msg.content)) return null;
+    const reply = msg.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    return parseClassifierReply(reply, packs);
   };
 }
 
