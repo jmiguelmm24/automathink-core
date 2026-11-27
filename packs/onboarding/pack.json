@@ -6,5 +6,6 @@
   "kind": "conversational",
   "tier": "facil",
   "tools": ["update_onboarding", "handoff_to_human"],
-  "route": { "keywords": ["onboard", "document", "paperwork", "\\bform\\b", "new patient", "new client", "insurance card", "intake form", "documentos", "formulario", "papeles", "nuevo cliente", "nuevo paciente"], "priority": 8 }
+  "route": { "keywords": ["onboard", "document", "paperwork", "\\bform\\b", "new patient", "new client", "insurance card", "intake form", "documentos", "formulario", "papeles", "nuevo cliente", "nuevo paciente"], "priority": 8 },
+  "reacts_to": { "booking.created": { "handler": "onBookingCreated", "chain": "booking_to_onboarding", "defaults": { "only_new_customers": true } } }
 }
