@@ -77,7 +77,7 @@ export async function runAgent(app, { pack, model, tier, conversation, contact, 
   // La API exige empezar por el usuario
   while (msgs.length && msgs[0].role !== 'user') msgs.shift();
   const tools = toolDefs(pack.tools || []);
-  let inTok = 0, outTok = 0, calls = 0, reply = '', reason = null;
+  let inTok = 0, outTok = 0, cacheRead = 0, cacheWrite = 0, calls = 0, reply = '', reason = null;
   try {
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       const res = await app.llm.messages.create({
@@ -85,13 +85,15 @@ export async function runAgent(app, { pack, model, tier, conversation, contact, 
         system: systemPrompt(app, pack, now), messages: msgs,
         ...(tools.length ? { tools } : {}),
       });
-      inTok += (res.usage?.input_tokens || 0) + (res.usage?.cache_read_input_tokens || 0) + (res.usage?.cache_creation_input_tokens || 0);
+      const read = res.usage?.cache_read_input_tokens || 0, write = res.usage?.cache_creation_input_tokens || 0;
+      inTok += (res.usage?.input_tokens || 0) + read + write;
+      cacheRead += read; cacheWrite += write;
       outTok += res.usage?.output_tokens || 0;
       if (res.stop_reason === 'refusal') {
         // stop_details solo viene en los rechazos; se protege igualmente por si falta
         const details = res.stop_details?.type === 'refusal' ? res.stop_details : null;
         const refusal = new RefusalError({ category: details?.category ?? null, explanation: details?.explanation ?? null });
-        record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'refusal', reason: `refusal: ${refusal.category || 'unknown'}`.slice(0, 300) });
+        record(app, { conversation, pack, model, tier, inTok, outTok, cacheRead, cacheWrite, calls, status: 'refusal', reason: `refusal: ${refusal.category || 'unknown'}`.slice(0, 300) });
         throw refusal;
       }
       const uses = res.content.filter(c => c.type === 'tool_use');
@@ -119,18 +121,19 @@ export async function runAgent(app, { pack, model, tier, conversation, contact, 
       }
       msgs.push({ role: 'user', content: results });
     }
-    record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'done', reason });
+    record(app, { conversation, pack, model, tier, inTok, outTok, cacheRead, cacheWrite, calls, status: 'done', reason });
     return reply;
   } catch (e) {
     if (e instanceof RefusalError) throw e; // ya registrado como 'refusal'
-    record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'error', reason: String(e.message || e).slice(0, 300) });
+    record(app, { conversation, pack, model, tier, inTok, outTok, cacheRead, cacheWrite, calls, status: 'error', reason: String(e.message || e).slice(0, 300) });
     throw e;
   }
 }
 
-function record(app, { conversation, pack, model, tier, inTok, outTok, calls, status, reason = null }) {
-  app.db.prepare(`INSERT INTO agent_runs (conversation_id, pack, model, tier, input_tokens, output_tokens, tool_calls, status, reason, created_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(conversation?.id ?? null, pack.id, model, tier, inTok, outTok, calls, status, reason, nowIso());
+// input_tokens = entrada total; cache_read/cache_write = la parte que vino de / fue a la caché (se cobran distinto)
+function record(app, { conversation, pack, model, tier, inTok, outTok, cacheRead = 0, cacheWrite = 0, calls, status, reason = null }) {
+  app.db.prepare(`INSERT INTO agent_runs (conversation_id, pack, model, tier, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, tool_calls, status, reason, created_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(conversation?.id ?? null, pack.id, model, tier, inTok, outTok, cacheRead, cacheWrite, calls, status, reason, nowIso());
 }
 
 // ---------------------------------------------------------------- entrada única de todos los canales

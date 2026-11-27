@@ -10,8 +10,12 @@
 import { STOP_WORDS } from './channels/sms.js';
 
 export const TIER_MODELS = { facil: 'claude-haiku-5-5', normal: 'claude-sonnet-5-5' };
-// Precio aproximado USD por millón de tokens (entrada / salida) para el informe de costes (nov-2026)
-export const MODEL_PRICES = { 'claude-haiku-5-5': [0.10, 0.50], 'claude-sonnet-5-5': [2, 10] };
+// Precio USD por millón de tokens para el informe de costes (nov-2026). cacheRead = entrada leída de la caché,
+// cacheWrite = entrada escrita en la caché de 5 min (1,25x la entrada). Haiku 5.5: tarifa de prompts ≤ 100K tokens.
+export const MODEL_PRICES = {
+  'claude-haiku-5-5': { input: 0.10, output: 0.50, cacheRead: 0.01, cacheWrite: 0.125 },
+  'claude-sonnet-5-5': { input: 2, output: 10, cacheRead: 0.10, cacheWrite: 2.50 },
+};
 
 const ESCALATE = /complain|angry|upset|refund|insurance claim|lawsuit|frustrat|molest|reclam|enfadad/i;
 const FOLLOW_ON = /^\s*([0-9]{1,2}|yes|yeah|yep|ok|okay|sure|no|si|sí|vale|perfect[o]?|the (first|second|third|1st|2nd|3rd)( one)?|(mon|tue|wed|thu|fri|sat|sun)[a-z]*|lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo|\d{1,2}(:\d{2})?\s*(am|pm)?)\s*[.!]?\s*$/i;
@@ -95,7 +99,10 @@ export function haikuClassifier(client) {
   };
 }
 
-export const costUsd = (model, inTok, outTok) => {
-  const [i, o] = MODEL_PRICES[model] || [0, 0];
-  return (inTok * i + outTok * o) / 1e6;
+// inTok es la entrada TOTAL (incluye lo leído y escrito en caché); se separa para cobrar cada parte a su precio
+export const costUsd = (model, inTok, outTok, cacheRead = 0, cacheWrite = 0) => {
+  const p = MODEL_PRICES[model];
+  if (!p) return 0;
+  const uncached = Math.max(0, inTok - cacheRead - cacheWrite);
+  return (uncached * p.input + cacheRead * p.cacheRead + cacheWrite * p.cacheWrite + outTok * p.output) / 1e6;
 };

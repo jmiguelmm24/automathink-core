@@ -13,9 +13,11 @@ export function computeReport(db, business, { days = 7, now = new Date() } = {})
   const handoffs = one(`SELECT COUNT(*) AS n FROM activity WHERE entity_type = 'conversation' AND action = 'handoff' AND created_at >= ?`, since).n;
   const optOuts = one(`SELECT COUNT(*) AS n FROM activity WHERE action = 'opt_out' AND created_at >= ?`, since).n;
   const afterHours = countAfterHours(db, business, since);
-  const runs = db.prepare(`SELECT model, SUM(input_tokens) AS i, SUM(output_tokens) AS o, COUNT(*) AS n FROM agent_runs WHERE created_at >= ? GROUP BY model`).all(since);
+  const runs = db.prepare(`SELECT model, SUM(input_tokens) AS i, SUM(output_tokens) AS o, SUM(cache_read_tokens) AS cr, SUM(cache_write_tokens) AS cw, COUNT(*) AS n
+                           FROM agent_runs WHERE created_at >= ? GROUP BY model`).all(since);
   const tokens = runs.reduce((s, r) => s + r.i + r.o, 0);
-  const aiCost = runs.reduce((s, r) => s + costUsd(r.model, r.i, r.o), 0);
+  // La parte leída de la caché cuesta mucho menos: se valora aparte (antes se cobraba como entrada normal)
+  const aiCost = runs.reduce((s, r) => s + costUsd(r.model, r.i, r.o, r.cr, r.cw), 0);
   const k = business.kpis;
   const minutesSaved = conversations * k.minutes_saved_per_conversation + bookings * k.minutes_saved_per_booking;
   return {
