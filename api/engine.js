@@ -19,6 +19,17 @@ export const MAX_OUTPUT_TOKENS = 4096;
 // No se envía `thinking`: en Sonnet 5.5 `{type:'disabled'}` devuelve 400.
 export const AGENT_EFFORT = 'low';
 
+// El modelo puede rechazar una petición (clasificadores de seguridad): HTTP 200 con stop_reason 'refusal'.
+// runAgent lanza este error para que quien llame decida (handleInbound pasa la conversación a una persona).
+export class RefusalError extends Error {
+  constructor({ category = null, explanation = null } = {}) {
+    super(`el modelo rechazó la petición${category ? ` (${category})` : ''}`);
+    this.name = 'RefusalError';
+    this.category = category;
+    this.explanation = explanation;
+  }
+}
+
 // ---------------------------------------------------------------- prompt de sistema
 // Bloque 1 (fijo por cliente, se cachea): reglas + perfil del negocio. Bloque 2: el agente concreto + fecha.
 export function businessBlock(b) {
@@ -76,6 +87,13 @@ export async function runAgent(app, { pack, model, tier, conversation, contact, 
       });
       inTok += (res.usage?.input_tokens || 0) + (res.usage?.cache_read_input_tokens || 0) + (res.usage?.cache_creation_input_tokens || 0);
       outTok += res.usage?.output_tokens || 0;
+      if (res.stop_reason === 'refusal') {
+        // stop_details solo viene en los rechazos; se protege igualmente por si falta
+        const details = res.stop_details?.type === 'refusal' ? res.stop_details : null;
+        const refusal = new RefusalError({ category: details?.category ?? null, explanation: details?.explanation ?? null });
+        record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'refusal', reason: `refusal: ${refusal.category || 'unknown'}`.slice(0, 300) });
+        throw refusal;
+      }
       const uses = res.content.filter(c => c.type === 'tool_use');
       reply = res.content.filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
       if (res.stop_reason === 'max_tokens') {
@@ -104,6 +122,7 @@ export async function runAgent(app, { pack, model, tier, conversation, contact, 
     record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'done', reason });
     return reply;
   } catch (e) {
+    if (e instanceof RefusalError) throw e; // ya registrado como 'refusal'
     record(app, { conversation, pack, model, tier, inTok, outTok, calls, status: 'error', reason: String(e.message || e).slice(0, 300) });
     throw e;
   }
@@ -143,25 +162,34 @@ export async function handleInbound(app, { channel, address, text, name = null, 
     return finish(app, conversation, null, `You've been unsubscribed from ${business.business.name} messages. Reply START to resubscribe.`, r, channel);
   }
   if (r.action === 'ignore') return { reply: null, route: r };
-  if (r.action === 'handoff') {
-    db.transaction(() => {
-      db.prepare(`UPDATE conversations SET status = 'handoff' WHERE id = ?`).run(conversation.id);
-      logActivity(db, { entity_type: 'conversation', entity_id: conversation.id, action: 'handoff', after: { reason: r.reason } });
-    })();
-    await notify(app, { kind: 'handoff', title: 'A customer needs a person', body: `${contact.name || contact.address}: "${text.slice(0, 200)}"` });
-    return finish(app, conversation, null, business.handoff.message || `Thanks for reaching out. A member of the ${business.business.name} team will contact you shortly.`, r, channel);
-  }
+  if (r.action === 'handoff') return handOff(app, { conversation, contact, text, channel, routeInfo: r, title: 'A customer needs a person' });
 
   const { model, tier, reason } = chooseModel(app, { pack: r.pack, text });
   let reply;
   try {
     reply = await runAgent(app, { pack: r.pack, model, tier, conversation, contact, now });
   } catch (e) {
+    if (e instanceof RefusalError) {
+      app.log?.warn({ category: e.category, pack: r.pack.id }, 'el modelo rechazó el mensaje: pasa a una persona');
+      const routeInfo = { action: 'handoff', reason: `refusal: ${e.category || 'unknown'}`, pack: r.pack, model, model_reason: reason };
+      return handOff(app, { conversation, contact, text, channel, routeInfo, title: 'The assistant declined a message' });
+    }
     app.log?.error({ err: String(e) }, 'fallo del agente');
     reply = business.fallback_message || `Sorry, I'm having trouble right now. A member of our team will get back to you shortly.`;
     await notify(app, { kind: 'error', title: 'The assistant failed to reply', body: `${contact.address}: "${text.slice(0, 120)}"` });
   }
   return finish(app, conversation, r.pack.id, reply || 'Got it! Anything else I can help with?', { ...r, model, model_reason: reason }, channel);
+}
+
+// Pasa la conversación a una persona: estado + actividad en una transacción, aviso al dueño y mensaje de traspaso
+async function handOff(app, { conversation, contact, text, channel, routeInfo, title }) {
+  const { db, business } = app;
+  db.transaction(() => {
+    db.prepare(`UPDATE conversations SET status = 'handoff' WHERE id = ?`).run(conversation.id);
+    logActivity(db, { entity_type: 'conversation', entity_id: conversation.id, action: 'handoff', after: { reason: routeInfo.reason } });
+  })();
+  await notify(app, { kind: 'handoff', title, body: `${contact.name || contact.address}: "${text.slice(0, 200)}"` });
+  return finish(app, conversation, null, business.handoff.message || `Thanks for reaching out. A member of the ${business.business.name} team will contact you shortly.`, routeInfo, channel);
 }
 
 // Guarda la respuesta. En el primer mensaje de la conversación añade el aviso de IA (AI Act / buenas prácticas en EE. UU.)
