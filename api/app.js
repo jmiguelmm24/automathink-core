@@ -17,7 +17,7 @@ import { sendSms, validTwilioSignature } from './channels/sms.js';
 import { computeReport } from './reports.js';
 import { upsertLead } from './tools/index.js';
 import { TIER_MODELS } from './orquestador.js';
-import { emit } from './events.js';
+import { emit, chainEnabled } from './events.js';
 
 const WEB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
@@ -94,14 +94,21 @@ export async function buildApp({ config, db = null, business = null, llm = null,
     try { await runAgent(app, { pack, model: TIER_MODELS[pack.tier || 'facil'], tier: pack.tier || 'facil', conversation, contact }); }
     catch (e) { app.log.warn({ err: String(e) }, 'back-office sin clasificar'); }
     // TCPA: solo se escribe por SMS si el formulario recogió el consentimiento
+    const willTouch = Boolean(app.packs.followup && phoneOk && consent_sms);
+    // Con la cadena "lead caliente" activa, el primer toque lo programa su reacción (packs/followup/reactions.js);
+    // si el cliente la apaga en business.yaml, el formulario programa el toque inmediato como antes
+    const hotLeadChain = chainEnabled(app, 'hot_lead');
     const lead = app.db.transaction(() => {
       const l = upsertLead(app.db, contact.id, { status: 'new', interest: message.slice(0, 120) || null });
-      if (app.packs.followup && phoneOk && consent_sms) app.db.prepare('UPDATE leads SET next_touch_at = ? WHERE id = ?').run(nowIso(), l.id);
+      if (willTouch && !hotLeadChain) {
+        app.db.prepare('UPDATE leads SET next_touch_at = ? WHERE id = ?').run(nowIso(), l.id);
+        logActivity(app.db, { entity_type: 'lead', entity_id: l.id, action: 'schedule_touch', after: { reason: 'intake' } });
+      }
       // Cadena "lead caliente": el pack de seguimiento decide cuándo tocar según la puntuación (api/events.js)
       emit(app.db, 'lead.scored', { contact_id: contact.id, payload: { lead_id: l.id, score: l.score ?? null, source: 'intake', consent_sms: Boolean(consent_sms), phone_ok: phoneOk } });
       return app.db.prepare('SELECT * FROM leads WHERE id = ?').get(l.id);
     })();
-    return { ok: true, lead_id: lead.id, status: lead.status, score: lead.score, first_touch: Boolean(lead.next_touch_at) };
+    return { ok: true, lead_id: lead.id, status: lead.status, score: lead.score, first_touch: willTouch };
   });
 
   // ------------------------------------------------------------ panel (con sesión)

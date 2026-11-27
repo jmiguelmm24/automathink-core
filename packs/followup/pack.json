@@ -6,5 +6,9 @@
   "kind": "conversational",
   "tier": "facil",
   "tools": ["save_lead", "check_availability", "book_appointment", "handoff_to_human"],
-  "route": { "keywords": ["interested", "more info", "price", "quote", "estimate", "cotiza", "precio", "información", "informacion"], "priority": 5 }
+  "route": { "keywords": ["interested", "more info", "price", "quote", "estimate", "cotiza", "precio", "información", "informacion"], "priority": 5 },
+  "reacts_to": {
+    "booking.cancelled": { "handler": "onBookingCancelled", "chain": "cancel_to_followup", "defaults": { "after_hours": 24 } },
+    "lead.scored": { "handler": "onLeadScored", "chain": "hot_lead", "defaults": { "min_score": 8, "low_score_delay_hours": 24 } }
+  }
 }
